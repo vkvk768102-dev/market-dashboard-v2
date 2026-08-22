@@ -87,6 +87,53 @@ function Section({ title, children, collapsed, onToggle }) {
   );
 }
 
+const PMI_VALUE_KEY = "manual_ism_pmi_value";
+const PMI_DATE_KEY = "manual_ism_pmi_date";
+
+function PmiRow() {
+  const [value, setValue] = useState(null);
+  const [date, setDate] = useState(null);
+
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem(PMI_VALUE_KEY);
+      const d = window.localStorage.getItem(PMI_DATE_KEY);
+      if (v) setValue(v);
+      if (d) setDate(d);
+    } catch {}
+  }, []);
+
+  const editValue = () => {
+    const input = window.prompt(
+      "ISM 제조업 PMI 값을 입력하세요 (예: 55.6)",
+      value || ""
+    );
+    if (input === null || input.trim() === "") return;
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(
+      today.getMonth() + 1
+    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    setValue(input.trim());
+    setDate(dateStr);
+    try {
+      window.localStorage.setItem(PMI_VALUE_KEY, input.trim());
+      window.localStorage.setItem(PMI_DATE_KEY, dateStr);
+    } catch {}
+  };
+
+  return (
+    <div className="row" onClick={editValue} style={{ cursor: "pointer" }}>
+      <div className="label">
+        ISM 제조업 PMI (수동입력)
+        {date && <span className="date">{date} 입력</span>}
+      </div>
+      <div className="vals">
+        <span className="value">{value ? value : "탭해서 입력"}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Page() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -210,12 +257,26 @@ export default function Page() {
               digits={3}
             />
             <Row
+              label="PCE 물가지수"
+              date={data.usEcon.pcepi.date}
+              field={data.usEcon.pcepi}
+              digits={3}
+            />
+            <Row
               label="소비자심리지수(미시간대)"
               date={data.usEcon.umcsent.date}
               field={data.usEcon.umcsent}
               digits={1}
               deltaDigits={1}
             />
+            <Row
+              label="신규실업수당청구건수(Initial Claims)"
+              date={data.usEcon.icsa.date}
+              field={data.usEcon.icsa}
+              digits={0}
+              deltaDigits={0}
+            />
+            <PmiRow />
           </Section>
 
           {/* 엔화 캐리트레이드 */}

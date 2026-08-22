@@ -129,7 +129,9 @@ export async function GET() {
     unrate,
     payems,
     cpi,
+    pcepi,
     umcsent,
+    icsa,
     jp10y,
     usdjpy,
     usdjpyVol,
@@ -159,7 +161,9 @@ export async function GET() {
     fredSeries("UNRATE"),
     fredSeries("PAYEMS"),
     fredSeries("CPIAUCSL"),
+    fredSeries("PCEPI"),
     fredSeries("UMCSENT"),
+    fredSeries("ICSA"),
     fredSeries("IRLTLT01JPM156N"),
     yahooQuote("JPY=X"),
     yahooRealizedVol("JPY=X"),
@@ -207,7 +211,7 @@ export async function GET() {
   return Response.json({
     generatedAt: new Date().toISOString(),
     junkBonds: { hyg, jnk, hySpread },
-    usEcon: { unrate, payems, cpi, umcsent },
+    usEcon: { unrate, payems, cpi, pcepi, umcsent, icsa },
     jpyCarry: { jp10y, usdjpy, usdjpyVol },
     macro: {
       fng,
