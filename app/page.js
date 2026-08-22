@@ -121,30 +121,30 @@ export default function Page() {
   return (
     <>
       <style>{`
-        body { padding: 20px 16px 60px; max-width: 520px; margin: 0 auto; }
-        .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
-        h1 { font-size:15px; font-weight:600; color:var(--text-dim); margin:0; letter-spacing:0.02em; }
-        .refresh-btn { background:var(--card); border:1px solid var(--card-border); color:var(--accent); border-radius:8px; padding:6px 12px; font-size:12.5px; font-weight:600; }
-        .section { margin-bottom:28px; }
-        .section-title { display:flex; align-items:center; gap:8px; font-size:19px; font-weight:700; margin-bottom:12px; cursor:pointer; user-select:none; }
-        .section-title .caret { font-size:14px; color:var(--text-dim); transition:transform 0.2s ease; display:inline-block; }
+        body { padding: 16px 12px 50px; max-width: 520px; margin: 0 auto; }
+        .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        h1 { font-size:12px; font-weight:600; color:var(--text-dim); margin:0; letter-spacing:0.02em; }
+        .refresh-btn { background:var(--card); border:1px solid var(--card-border); color:var(--accent); border-radius:7px; padding:5px 10px; font-size:11px; font-weight:600; }
+        .section { margin-bottom:20px; }
+        .section-title { display:flex; align-items:center; gap:6px; font-size:15px; font-weight:700; margin-bottom:9px; cursor:pointer; user-select:none; }
+        .section-title .caret { font-size:11px; color:var(--text-dim); transition:transform 0.2s ease; display:inline-block; }
         .section.collapsed .caret { transform:rotate(180deg); }
-        .card { background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:18px 20px; overflow:hidden; max-height:3000px; transition:max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease; }
+        .card { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:13px 15px; overflow:hidden; max-height:3000px; transition:max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease; }
         .section.collapsed .card { max-height:0; padding-top:0; padding-bottom:0; border-width:0; opacity:0; }
-        .card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:15px; font-weight:700; color:var(--accent); }
-        .card-head .timestamp { color:var(--text-dim); font-weight:500; font-size:11.5px; }
-        .row { display:flex; justify-content:space-between; align-items:baseline; padding:9px 0; border-bottom:1px solid #161616; font-size:15px; gap:10px; }
+        .card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:12px; font-weight:700; color:var(--accent); }
+        .card-head .timestamp { color:var(--text-dim); font-weight:500; font-size:9.5px; }
+        .row { display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; border-bottom:1px solid #161616; font-size:12px; gap:8px; }
         .row:last-child { border-bottom:none; }
-        .label { display:flex; flex-direction:column; gap:2px; color:var(--text-main); font-weight:500; }
-        .label .date { font-size:11.5px; color:var(--text-dim); font-weight:400; }
-        .vals { display:flex; align-items:baseline; gap:14px; white-space:nowrap; }
-        .delta { font-size:13px; font-weight:600; min-width:56px; text-align:right; }
-        .value { font-size:17px; font-weight:700; min-width:64px; text-align:right; }
+        .label { display:flex; flex-direction:column; gap:1px; color:var(--text-main); font-weight:500; }
+        .label .date { font-size:9.5px; color:var(--text-dim); font-weight:400; }
+        .vals { display:flex; align-items:baseline; gap:10px; white-space:nowrap; }
+        .delta { font-size:10.5px; font-weight:600; min-width:44px; text-align:right; }
+        .value { font-size:13.5px; font-weight:700; min-width:52px; text-align:right; }
         .up { color:var(--up); }
         .down { color:var(--down); }
         .neutral { color:var(--text-dim); }
-        .status-line { text-align:center; color:#4a4a4a; font-size:11.5px; margin-top:26px; }
-        .err-banner { background:#2a1414; border:1px solid #4a1f1f; color:#ff8a8a; border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:18px; }
+        .status-line { text-align:center; color:#4a4a4a; font-size:9.5px; margin-top:20px; }
+        .err-banner { background:#2a1414; border:1px solid #4a1f1f; color:#ff8a8a; border-radius:9px; padding:8px 12px; font-size:11px; margin-bottom:14px; }
       `}</style>
 
       <div className="topbar">
