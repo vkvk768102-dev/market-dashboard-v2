@@ -12,7 +12,14 @@ async function fredSeries(seriesId, limit = 2) {
   }
   const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${FRED_KEY}&file_type=json&sort_order=desc&limit=${limit}`;
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        Accept: "application/json",
+      },
+    });
     if (!res.ok) return { error: `FRED ${seriesId} HTTP ${res.status}` };
     const data = await res.json();
     const obs = (data.observations || []).filter((o) => o.value !== ".");
