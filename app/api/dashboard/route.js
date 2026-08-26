@@ -157,6 +157,36 @@ async function fearGreed() {
     return { error: `Fear&Greed fetch 실패: ${e.message}` };
   }
 }
+// ---------- ICI 머니마켓펀드 총자산 (비공식 스크래핑, 매주 목요일경 갱신) ----------
+async function iciMoneyMarketTotal() {
+  const url = "https://www.ici.org/research/stats/mmf";
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+    if (!res.ok) return { error: `ICI MMF HTTP ${res.status}` };
+    const html = await res.text();
+
+    const re =
+      /Total money market fund assets[\s\S]{0,80}?(increased|decreased) by\s*\$([\d,.]+)\s*(billion|million)[\s\S]{0,40}?to\s*\$([\d.]+)\s*trillion for the week ended \w+,\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})/i;
+    const m = html.match(re);
+    if (!m) return { error: "ICI MMF 파싱 실패 (페이지 형식 변경 가능성)" };
+
+    const [, direction, changeRaw, changeUnit, levelTrillionRaw, dateStr] = m;
+    const changeAmount = parseFloat(changeRaw.replace(/,/g, ""));
+    const changeBillion =
+      changeUnit.toLowerCase() === "million" ? changeAmount / 1000 : changeAmount;
+    const delta = direction.toLowerCase() === "decreased" ? -changeBillion : changeBillion;
+
+    const value = parseFloat(levelTrillionRaw) * 1000;
+    const date = new Date(dateStr).toISOString().slice(0, 10);
+
+    return { value, date, delta };
+  } catch (e) {
+    return { error: `ICI MMF fetch 실패: ${e.message}` };
+  }
+}
 
 export async function GET() {
   const [
@@ -186,8 +216,7 @@ export async function GET() {
     wresbal,
     sofr,
     iorb,
-    mmfRetail,
-    mmfInst,
+    mmfIci,
     tbill1mo,
     tbill3mo,
     fng,
@@ -218,8 +247,7 @@ export async function GET() {
     fredSeries("WRESBAL"),
     fredSeries("SOFR"),
     fredSeries("IORB"),
-    fredSeries("WRMFSL"),
-    fredSeries("WIMFSL"),
+    iciMoneyMarketTotal(),
     fredSeries("DGS1MO"),
     fredSeries("DGS3MO"),
     fearGreed(),
@@ -248,10 +276,7 @@ if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
     sofrIorbSpread = { value: (sofr.value - iorb.value) * 100 }; // bps
   }
 
-  let mmfTotal = { error: "계산 불가" };
-  if (mmfRetail.value != null && mmfInst.value != null) {
-    mmfTotal = { value: mmfRetail.value + mmfInst.value };
-  }
+ let mmfTotal = mmfIci; // ICI 공식 주간 발표 총액 그대로 사용
 
   return Response.json({
     generatedAt: new Date().toISOString(),
