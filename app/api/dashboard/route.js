@@ -35,7 +35,44 @@ async function fredSeries(seriesId, limit = 2) {
     return { error: `FRED ${seriesId} fetch 실패: ${e.message}` };
   }
 }
+// 주간 평균 계산용 (TGA 등 일별 시리즈를 최근 N거래일 평균으로)
+async function fredWeeklyAvg(seriesId, weekSize = 5) {
+  if (!FRED_KEY) {
+    return { error: "FRED_API_KEY 미설정" };
+  }
+  const limit = weekSize * 2 + 5; // 이번주+지난주 비교용 여유분
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${FRED_KEY}&file_type=json&sort_order=desc&limit=${limit}`;
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return { error: `FRED ${seriesId} HTTP ${res.status}` };
+    const data = await res.json();
+    const obs = (data.observations || []).filter((o) => o.value !== ".");
+    if (obs.length < weekSize) return { error: `FRED ${seriesId} 데이터 부족` };
 
+    const avg = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+    const recentWeek = obs.slice(0, weekSize).map((o) => parseFloat(o.value));
+    const prevWeek = obs.slice(weekSize, weekSize * 2).map((o) => parseFloat(o.value));
+
+    const currentAvg = avg(recentWeek);
+    const prevAvg = prevWeek.length === weekSize ? avg(prevWeek) : null;
+
+    return {
+      value: currentAvg,
+      date: obs[0].date, // 가장 최근 관측일 (주간평균 기준일 표시용)
+      delta: prevAvg !== null ? currentAvg - prevAvg : null,
+    };
+  } catch (e) {
+    return { error: `FRED ${seriesId} fetch 실패: ${e.message}` };
+  }
+}
 // ---------- Yahoo Finance (비공식 엔드포인트, API 키 불필요) ----------
 async function yahooQuote(symbol) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
