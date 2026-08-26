@@ -89,10 +89,21 @@ async function yahooQuote(symbol) {
     if (!result) return { error: `Yahoo ${symbol} 데이터 없음` };
     const meta = result.meta;
     const price = meta.regularMarketPrice;
-    const prevClose = meta.previousClose ?? meta.chartPreviousClose;
+
+    const closes = result?.indicators?.quote?.[0]?.close?.filter(
+      (v) => v !== null && v !== undefined
+    );
+    let prevClose = null;
+    if (closes && closes.length >= 2) {
+      prevClose = closes[closes.length - 2];
+    }
+    if (prevClose == null) {
+      prevClose = meta.previousClose ?? meta.chartPreviousClose;
+    }
+
     return {
       value: price,
-      delta: prevClose !== undefined ? price - prevClose : null,
+      delta: prevClose != null ? price - prevClose : null,
       pct: prevClose ? ((price - prevClose) / prevClose) * 100 : null,
       date: new Date(meta.regularMarketTime * 1000).toISOString(),
     };
