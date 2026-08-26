@@ -212,7 +212,7 @@ export async function GET() {
     fredSeries("STLFSI4"),
     fredSeries("M2SL"),
     fredSeries("WALCL"),
-    fredWeeklyAvg("WDTGAL"),
+    fredSeries("WTREGEN"),
     fredSeries("RRPONTSYD"),
     fredSeries("RRPONTSYAWARD"),
     fredSeries("WRESBAL"),
