@@ -218,12 +218,28 @@ export default function Page() {
             collapsed={collapsed.junk}
             onToggle={() => toggle("junk")}
           >
-            <Row label="HYG" field={data.junkBonds.hyg} digits={2} deltaSuffix="%" deltaDigits={2} />
-            <Row label="JNK" field={data.junkBonds.jnk} digits={2} deltaSuffix="%" deltaDigits={2} />
+            <Row
+              label="HYG"
+              field={{ value: data.junkBonds.hyg.value, delta: data.junkBonds.hyg.pct, error: data.junkBonds.hyg.error }}
+              digits={2}
+              deltaSuffix="%"
+              deltaDigits={2}
+            />
+            <Row
+              label="JNK"
+              field={{ value: data.junkBonds.jnk.value, delta: data.junkBonds.jnk.pct, error: data.junkBonds.jnk.error }}
+              digits={2}
+              deltaSuffix="%"
+              deltaDigits={2}
+            />
             <Row
               label="High Yield Spread"
               date={data.junkBonds.hySpread.date}
-              field={data.junkBonds.hySpread}
+              field={{
+                value: data.junkBonds.hySpread.value,
+                delta: data.junkBonds.hySpread.delta != null ? data.junkBonds.hySpread.delta * 100 : null,
+                error: data.junkBonds.hySpread.error,
+              }}
               unit="%"
               deltaSuffix=" bps"
               deltaDigits={0}
