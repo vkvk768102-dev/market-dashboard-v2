@@ -284,7 +284,10 @@ if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
     sofrIorbSpread = { value: (sofr.value - iorb.value) * 100 }; // bps
   }
 
- let mmfTotal = mmfIci; // ICI 공식 주간 발표 총액 그대로 사용
+ let mmfTotal = { error: "계산 불가" };
+ if (mmfRetail.value != null && mmfInst.value != null) {
+  mmfTotal = { value: mmfRetail.value + mmfInst.value };
+ }
 
   return Response.json({
     generatedAt: new Date().toISOString(),
