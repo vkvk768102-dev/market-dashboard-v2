@@ -353,8 +353,9 @@ export default function Page() {
             />
             <Row
               label="Net Liquidity"
-              field={{ value: data.macro.netLiquidity.value, delta: null, error: data.macro.netLiquidity.error }}
+              field={{ value: data.macro.netLiquidity.value, delta: data.macro.netLiquidity.delta, error: data.macro.netLiquidity.error }}
               digits={0}
+              deltaDigits={0}
             />
             <Row label="SOFR" date={data.macro.sofr.date} field={data.macro.sofr} unit="%" />
             <Row label="IORB" date={data.macro.iorb.date} field={data.macro.iorb} unit="%" />
