@@ -229,11 +229,19 @@ export async function GET() {
   // WALCL, WDTGAL 은 "백만 달러" 단위이고 RRPONTSYD 는 "십억 달러" 단위이므로
   // RRPONTSYD 를 1000배 하여 백만 달러 단위로 맞춘 뒤 계산한다.
   let netLiquidity = { error: "계산 불가" };
-  if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
-    netLiquidity = {
-      value: fedBalance.value - tga.value - onrrp.value * 1000,
-    };
+if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
+  netLiquidity = {
+    value: fedBalance.value - tga.value - onrrp.value * 1000,
+  };
+  if (
+    fedBalance.delta != null &&
+    tga.delta != null &&
+    onrrp.delta != null
+  ) {
+    netLiquidity.delta =
+      fedBalance.delta - tga.delta - onrrp.delta * 1000;
   }
+}
 
   let sofrIorbSpread = { error: "계산 불가" };
   if (sofr.value != null && iorb.value != null) {
