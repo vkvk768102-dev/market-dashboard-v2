@@ -186,19 +186,24 @@ async function iciMoneyMarketTotal() {
     if (!res.ok) return { error: `ICI MMF HTTP ${res.status}` };
     const html = await res.text();
 
+    // 발표 연도는 "Washington, DC; August 27, 2026—" 부분에서 따로 추출
+    // (본문의 "week ended Wednesday, August 26," 부분에는 연도가 안 붙어 있음)
+    const yearMatch = html.match(/Washington,\s*DC;\s*[A-Za-z]+\s+\d{1,2},\s*(\d{4})/i);
+    const year = yearMatch ? yearMatch[1] : String(new Date().getFullYear());
+
     const re =
-      /Total money market fund assets[\s\S]{0,80}?(increased|decreased) by\s*\$([\d,.]+)\s*(billion|million)[\s\S]{0,40}?to\s*\$([\d.]+)\s*trillion for the week ended \w+,\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})/i;
+      /Total money market fund assets[\s\S]{0,80}?(increased|decreased) by\s*\$([\d,.]+)\s*(billion|million)[\s\S]{0,60}?to\s*\$([\d.]+)\s*trillion for the week ended \w+,\s*([A-Za-z]+\s+\d{1,2})/i;
     const m = html.match(re);
     if (!m) return { error: "ICI MMF 파싱 실패 (페이지 형식 변경 가능성)" };
 
-    const [, direction, changeRaw, changeUnit, levelTrillionRaw, dateStr] = m;
+    const [, direction, changeRaw, changeUnit, levelTrillionRaw, dateStrNoYear] = m;
     const changeAmount = parseFloat(changeRaw.replace(/,/g, ""));
     const changeBillion =
       changeUnit.toLowerCase() === "million" ? changeAmount / 1000 : changeAmount;
     const delta = direction.toLowerCase() === "decreased" ? -changeBillion : changeBillion;
 
     const value = parseFloat(levelTrillionRaw) * 1000;
-    const date = new Date(dateStr).toISOString().slice(0, 10);
+    const date = new Date(`${dateStrNoYear}, ${year}`).toISOString().slice(0, 10);
 
     return { value, date, delta };
   } catch (e) {
