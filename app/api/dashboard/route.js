@@ -35,7 +35,44 @@ async function fredSeries(seriesId, limit = 2) {
     return { error: `FRED ${seriesId} fetch 실패: ${e.message}` };
   }
 }
+// 주간 평균 계산용 (TGA 등 일별 시리즈를 최근 N거래일 평균으로)
+async function fredWeeklyAvg(seriesId, weekSize = 5) {
+  if (!FRED_KEY) {
+    return { error: "FRED_API_KEY 미설정" };
+  }
+  const limit = weekSize * 2 + 5; // 이번주+지난주 비교용 여유분
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${FRED_KEY}&file_type=json&sort_order=desc&limit=${limit}`;
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return { error: `FRED ${seriesId} HTTP ${res.status}` };
+    const data = await res.json();
+    const obs = (data.observations || []).filter((o) => o.value !== ".");
+    if (obs.length < weekSize) return { error: `FRED ${seriesId} 데이터 부족` };
 
+    const avg = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+    const recentWeek = obs.slice(0, weekSize).map((o) => parseFloat(o.value));
+    const prevWeek = obs.slice(weekSize, weekSize * 2).map((o) => parseFloat(o.value));
+
+    const currentAvg = avg(recentWeek);
+    const prevAvg = prevWeek.length === weekSize ? avg(prevWeek) : null;
+
+    return {
+      value: currentAvg,
+      date: obs[0].date, // 가장 최근 관측일 (주간평균 기준일 표시용)
+      delta: prevAvg !== null ? currentAvg - prevAvg : null,
+    };
+  } catch (e) {
+    return { error: `FRED ${seriesId} fetch 실패: ${e.message}` };
+  }
+}
 // ---------- Yahoo Finance (비공식 엔드포인트, API 키 불필요) ----------
 async function yahooQuote(symbol) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
@@ -52,10 +89,21 @@ async function yahooQuote(symbol) {
     if (!result) return { error: `Yahoo ${symbol} 데이터 없음` };
     const meta = result.meta;
     const price = meta.regularMarketPrice;
-    const prevClose = meta.previousClose ?? meta.chartPreviousClose;
+
+    const closes = result?.indicators?.quote?.[0]?.close?.filter(
+      (v) => v !== null && v !== undefined
+    );
+    let prevClose = null;
+    if (closes && closes.length >= 2) {
+      prevClose = closes[closes.length - 2];
+    }
+    if (prevClose == null) {
+      prevClose = meta.previousClose ?? meta.chartPreviousClose;
+    }
+
     return {
       value: price,
-      delta: prevClose !== undefined ? price - prevClose : null,
+      delta: prevClose != null ? price - prevClose : null,
       pct: prevClose ? ((price - prevClose) / prevClose) * 100 : null,
       date: new Date(meta.regularMarketTime * 1000).toISOString(),
     };
@@ -120,6 +168,43 @@ async function fearGreed() {
     return { error: `Fear&Greed fetch 실패: ${e.message}` };
   }
 }
+// ---------- ICI 머니마켓펀드 총자산 (비공식 스크래핑, 매주 목요일경 갱신) ----------
+async function iciMoneyMarketTotal() {
+  const url = "https://www.ici.org/research/stats/mmf";
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        Referer: "https://www.google.com/",
+      },
+    });
+    if (!res.ok) return { error: `ICI MMF HTTP ${res.status}` };
+    const html = await res.text();
+
+    const re =
+      /Total money market fund assets[\s\S]{0,80}?(increased|decreased) by\s*\$([\d,.]+)\s*(billion|million)[\s\S]{0,40}?to\s*\$([\d.]+)\s*trillion for the week ended \w+,\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})/i;
+    const m = html.match(re);
+    if (!m) return { error: "ICI MMF 파싱 실패 (페이지 형식 변경 가능성)" };
+
+    const [, direction, changeRaw, changeUnit, levelTrillionRaw, dateStr] = m;
+    const changeAmount = parseFloat(changeRaw.replace(/,/g, ""));
+    const changeBillion =
+      changeUnit.toLowerCase() === "million" ? changeAmount / 1000 : changeAmount;
+    const delta = direction.toLowerCase() === "decreased" ? -changeBillion : changeBillion;
+
+    const value = parseFloat(levelTrillionRaw) * 1000;
+    const date = new Date(dateStr).toISOString().slice(0, 10);
+
+    return { value, date, delta };
+  } catch (e) {
+    return { error: `ICI MMF fetch 실패: ${e.message}` };
+  }
+}
 
 export async function GET() {
   const [
@@ -154,6 +239,7 @@ export async function GET() {
     tbill1mo,
     tbill3mo,
     fng,
+    iciMmf,
   ] = await Promise.all([
     yahooQuote("HYG"),
     yahooQuote("JNK"),
@@ -175,7 +261,7 @@ export async function GET() {
     fredSeries("STLFSI4"),
     fredSeries("M2SL"),
     fredSeries("WALCL"),
-    fredSeries("WDTGAL"),
+    fredSeries("WTREGEN"),
     fredSeries("RRPONTSYD"),
     fredSeries("RRPONTSYAWARD"),
     fredSeries("WRESBAL"),
@@ -186,27 +272,42 @@ export async function GET() {
     fredSeries("DGS1MO"),
     fredSeries("DGS3MO"),
     fearGreed(),
+    iciMoneyMarketTotal(),
   ]);
 
   // Net Liquidity = Fed Balance - TGA - ON RRP
   // WALCL, WDTGAL 은 "백만 달러" 단위이고 RRPONTSYD 는 "십억 달러" 단위이므로
   // RRPONTSYD 를 1000배 하여 백만 달러 단위로 맞춘 뒤 계산한다.
   let netLiquidity = { error: "계산 불가" };
-  if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
-    netLiquidity = {
-      value: fedBalance.value - tga.value - onrrp.value * 1000,
-    };
+if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
+  netLiquidity = {
+    value: fedBalance.value - tga.value - onrrp.value * 1000,
+  };
+  if (
+    fedBalance.delta != null &&
+    tga.delta != null &&
+    onrrp.delta != null
+  ) {
+    netLiquidity.delta =
+      fedBalance.delta - tga.delta - onrrp.delta * 1000;
   }
+}
 
   let sofrIorbSpread = { error: "계산 불가" };
   if (sofr.value != null && iorb.value != null) {
     sofrIorbSpread = { value: (sofr.value - iorb.value) * 100 }; // bps
   }
 
-  let mmfTotal = { error: "계산 불가" };
-  if (mmfRetail.value != null && mmfInst.value != null) {
-    mmfTotal = { value: mmfRetail.value + mmfInst.value };
-  }
+ // MMF 총액: ICI 원천 스크래핑을 우선 사용하고, 실패 시에만 FRED 주간 시리즈(WRMFSL+WIMFSL)로 대체
+ let mmfTotal = { error: "계산 불가" };
+ let mmfSource = null;
+ if (iciMmf.value != null) {
+  mmfTotal = { value: iciMmf.value, date: iciMmf.date, delta: iciMmf.delta };
+  mmfSource = "ICI";
+ } else if (mmfRetail.value != null && mmfInst.value != null) {
+  mmfTotal = { value: mmfRetail.value + mmfInst.value };
+  mmfSource = "FRED";
+ }
 
   return Response.json({
     generatedAt: new Date().toISOString(),
@@ -232,6 +333,7 @@ export async function GET() {
       iorb,
       sofrIorbSpread,
       mmfTotal,
+      mmfSource,
       tbill1mo,
       tbill3mo,
     },

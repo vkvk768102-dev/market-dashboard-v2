@@ -365,9 +365,15 @@ export default function Page() {
               digits={0}
             />
             <Row
-              label="MMF Total (FRED 주간)"
-              field={{ value: data.macro.mmfTotal.value, delta: null, error: data.macro.mmfTotal.error }}
+              label={`MMF Total (${data.macro.mmfSource || "FRED 주간"})`}
+              date={data.macro.mmfTotal.date}
+              field={{
+                value: data.macro.mmfTotal.value,
+                delta: data.macro.mmfTotal.delta ?? null,
+                error: data.macro.mmfTotal.error,
+              }}
               digits={1}
+              deltaDigits={1}
             />
             <Row label="미국국채 1개월" date={data.macro.tbill1mo.date} field={data.macro.tbill1mo} unit="%" />
             <Row label="미국국채 3개월" date={data.macro.tbill3mo.date} field={data.macro.tbill3mo} unit="%" />
