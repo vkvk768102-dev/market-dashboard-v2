@@ -339,6 +339,7 @@ if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
       sofrIorbSpread,
       mmfTotal,
       mmfSource,
+      iciDebug: iciMmf, // 임시 디버그용 - 원인 확인 후 제거 예정
       tbill1mo,
       tbill3mo,
     },
