@@ -168,47 +168,17 @@ async function fearGreed() {
     return { error: `Fear&Greed fetch 실패: ${e.message}` };
   }
 }
-// ---------- ICI 머니마켓펀드 총자산 (비공식 스크래핑, 매주 목요일경 갱신) ----------
-async function iciMoneyMarketTotal() {
-  const url = "https://www.ici.org/research/stats/mmf";
-  try {
-    const res = await fetch(url, {
-      cache: "no-store",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        Referer: "https://www.google.com/",
-      },
-    });
-    if (!res.ok) return { error: `ICI MMF HTTP ${res.status}` };
-    const html = await res.text();
-
-    // 발표 연도는 "Washington, DC; August 27, 2026—" 부분에서 따로 추출
-    // (본문의 "week ended Wednesday, August 26," 부분에는 연도가 안 붙어 있음)
-    const yearMatch = html.match(/Washington,\s*DC;\s*[A-Za-z]+\s+\d{1,2},\s*(\d{4})/i);
-    const year = yearMatch ? yearMatch[1] : String(new Date().getFullYear());
-
-    const re =
-      /Total money market fund assets[\s\S]{0,80}?(increased|decreased) by\s*\$([\d,.]+)\s*(billion|million)[\s\S]{0,60}?to\s*\$([\d.]+)\s*trillion for the week ended \w+,\s*([A-Za-z]+\s+\d{1,2})/i;
-    const m = html.match(re);
-    if (!m) return { error: "ICI MMF 파싱 실패 (페이지 형식 변경 가능성)" };
-
-    const [, direction, changeRaw, changeUnit, levelTrillionRaw, dateStrNoYear] = m;
-    const changeAmount = parseFloat(changeRaw.replace(/,/g, ""));
-    const changeBillion =
-      changeUnit.toLowerCase() === "million" ? changeAmount / 1000 : changeAmount;
-    const delta = direction.toLowerCase() === "decreased" ? -changeBillion : changeBillion;
-
-    const value = parseFloat(levelTrillionRaw) * 1000;
-    const date = new Date(`${dateStrNoYear}, ${year}`).toISOString().slice(0, 10);
-
-    return { value, date, delta };
-  } catch (e) {
-    return { error: `ICI MMF fetch 실패: ${e.message}` };
-  }
+// ---------- FRED 머니마켓펀드 총자산 (분기별, 계속 갱신됨) ----------
+// 예전에 쓰던 WRMFSL+WIMFSL(주간)은 2021년 2월에 발행이 중단되어 더 이상 갱신되지 않으므로,
+// 지금도 계속 갱신되는 분기별 시리즈(MMMFFAQ027S, 백만 달러 단위)로 대체.
+async function fredMmfTotal() {
+  const result = await fredSeries("MMMFFAQ027S");
+  if (result.error) return result;
+  return {
+    value: result.value / 1000, // 백만 달러 -> 십억 달러
+    date: result.date,
+    delta: result.delta != null ? result.delta / 1000 : null,
+  };
 }
 
 export async function GET() {
@@ -239,12 +209,10 @@ export async function GET() {
     wresbal,
     sofr,
     iorb,
-    mmfRetail,
-    mmfInst,
+    mmfTotalRaw,
     tbill1mo,
     tbill3mo,
     fng,
-    iciMmf,
   ] = await Promise.all([
     yahooQuote("HYG"),
     yahooQuote("JNK"),
@@ -272,12 +240,10 @@ export async function GET() {
     fredSeries("WRESBAL"),
     fredSeries("SOFR"),
     fredSeries("IORB"),
-    fredSeries("WRMFSL"),
-    fredSeries("WIMFSL"),
+    fredMmfTotal(),
     fredSeries("DGS1MO"),
     fredSeries("DGS3MO"),
     fearGreed(),
-    iciMoneyMarketTotal(),
   ]);
 
   // Net Liquidity = Fed Balance - TGA - ON RRP
@@ -303,16 +269,10 @@ if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
     sofrIorbSpread = { value: (sofr.value - iorb.value) * 100 }; // bps
   }
 
- // MMF 총액: ICI 원천 스크래핑을 우선 사용하고, 실패 시에만 FRED 주간 시리즈(WRMFSL+WIMFSL)로 대체
- let mmfTotal = { error: "계산 불가" };
- let mmfSource = null;
- if (iciMmf.value != null) {
-  mmfTotal = { value: iciMmf.value, date: iciMmf.date, delta: iciMmf.delta };
-  mmfSource = "ICI";
- } else if (mmfRetail.value != null && mmfInst.value != null) {
-  mmfTotal = { value: mmfRetail.value + mmfInst.value };
-  mmfSource = "FRED";
- }
+ // MMF 총액: 분기별로 계속 갱신되는 FRED 시리즈(MMMFFAQ027S) 사용
+ const mmfTotal = mmfTotalRaw.error
+  ? { error: mmfTotalRaw.error }
+  : { value: mmfTotalRaw.value, date: mmfTotalRaw.date, delta: mmfTotalRaw.delta };
 
   return Response.json({
     generatedAt: new Date().toISOString(),
@@ -338,8 +298,6 @@ if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
       iorb,
       sofrIorbSpread,
       mmfTotal,
-      mmfSource,
-      iciDebug: iciMmf, // 임시 디버그용 - 원인 확인 후 제거 예정
       tbill1mo,
       tbill3mo,
     },

@@ -218,28 +218,12 @@ export default function Page() {
             collapsed={collapsed.junk}
             onToggle={() => toggle("junk")}
           >
-            <Row
-              label="HYG"
-              field={{ value: data.junkBonds.hyg.value, delta: data.junkBonds.hyg.pct, error: data.junkBonds.hyg.error }}
-              digits={2}
-              deltaSuffix="%"
-              deltaDigits={2}
-            />
-            <Row
-              label="JNK"
-              field={{ value: data.junkBonds.jnk.value, delta: data.junkBonds.jnk.pct, error: data.junkBonds.jnk.error }}
-              digits={2}
-              deltaSuffix="%"
-              deltaDigits={2}
-            />
+            <Row label="HYG" field={data.junkBonds.hyg} digits={2} deltaSuffix="%" deltaDigits={2} />
+            <Row label="JNK" field={data.junkBonds.jnk} digits={2} deltaSuffix="%" deltaDigits={2} />
             <Row
               label="High Yield Spread"
               date={data.junkBonds.hySpread.date}
-              field={{
-                value: data.junkBonds.hySpread.value,
-                delta: data.junkBonds.hySpread.delta != null ? data.junkBonds.hySpread.delta * 100 : null,
-                error: data.junkBonds.hySpread.error,
-              }}
+              field={data.junkBonds.hySpread}
               unit="%"
               deltaSuffix=" bps"
               deltaDigits={0}
@@ -323,7 +307,7 @@ export default function Page() {
             onToggle={() => toggle("macro")}
           >
             <div className="card-head">
-              <span>Yahoo, FRED &amp; ICI</span>
+              <span>Yahoo &amp; FRED</span>
               <span className="timestamp">
                 {lastFetched && `원천 확인 ${fmtDate(lastFetched.toISOString())}`}
               </span>
@@ -369,9 +353,8 @@ export default function Page() {
             />
             <Row
               label="Net Liquidity"
-              field={{ value: data.macro.netLiquidity.value, delta: data.macro.netLiquidity.delta, error: data.macro.netLiquidity.error }}
+              field={{ value: data.macro.netLiquidity.value, delta: null, error: data.macro.netLiquidity.error }}
               digits={0}
-              deltaDigits={0}
             />
             <Row label="SOFR" date={data.macro.sofr.date} field={data.macro.sofr} unit="%" />
             <Row label="IORB" date={data.macro.iorb.date} field={data.macro.iorb} unit="%" />
@@ -382,15 +365,15 @@ export default function Page() {
               digits={0}
             />
             <Row
-              label={`MMF Total (${data.macro.mmfSource || "FRED 주간"})`}
+              label="MMF Total (FRED, 분기)"
               date={data.macro.mmfTotal.date}
               field={{
                 value: data.macro.mmfTotal.value,
                 delta: data.macro.mmfTotal.delta ?? null,
                 error: data.macro.mmfTotal.error,
               }}
-              digits={1}
-              deltaDigits={1}
+              digits={0}
+              deltaDigits={0}
             />
             <Row label="미국국채 1개월" date={data.macro.tbill1mo.date} field={data.macro.tbill1mo} unit="%" />
             <Row label="미국국채 3개월" date={data.macro.tbill3mo.date} field={data.macro.tbill3mo} unit="%" />
