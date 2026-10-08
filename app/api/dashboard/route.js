@@ -30,7 +30,35 @@ async function fredSeries(seriesId, limit = 2) {
       value: latest,
       date: obs[0].date,
       delta: prev !== null ? latest - prev : null,
+      prevValue: prev,
+      prevDate: obs[1] ? obs[1].date : null,
     };
+  } catch (e) {
+    return { error: `FRED ${seriesId} fetch 실패: ${e.message}` };
+  }
+}
+// 최근 관측값 여러 개를 최신순으로 가져옴 (Net Liquidity 변동 계산에서 날짜를 맞추는 데 사용)
+async function fredObservations(seriesId, limit = 20) {
+  if (!FRED_KEY) {
+    return { error: "FRED_API_KEY 미설정" };
+  }
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${FRED_KEY}&file_type=json&sort_order=desc&limit=${limit}`;
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return { error: `FRED ${seriesId} HTTP ${res.status}` };
+    const data = await res.json();
+    const obs = (data.observations || [])
+      .filter((o) => o.value !== ".")
+      .map((o) => ({ date: o.date, value: parseFloat(o.value) }));
+    if (obs.length === 0) return { error: `FRED ${seriesId} 데이터 없음` };
+    return { obs };
   } catch (e) {
     return { error: `FRED ${seriesId} fetch 실패: ${e.message}` };
   }
@@ -213,6 +241,7 @@ export async function GET() {
     tbill1mo,
     tbill3mo,
     fng,
+    onrrpHistory,
   ] = await Promise.all([
     yahooQuote("HYG"),
     yahooQuote("JNK"),
@@ -244,25 +273,40 @@ export async function GET() {
     fredSeries("DGS1MO"),
     fredSeries("DGS3MO"),
     fearGreed(),
+    fredObservations("RRPONTSYD", 20),
   ]);
 
   // Net Liquidity = Fed Balance - TGA - ON RRP
-  // WALCL, WDTGAL 은 "백만 달러" 단위이고 RRPONTSYD 는 "십억 달러" 단위이므로
+  // WALCL, WTREGEN 은 "백만 달러" 단위이고 RRPONTSYD 는 "십억 달러" 단위이므로
   // RRPONTSYD 를 1000배 하여 백만 달러 단위로 맞춘 뒤 계산한다.
+  //
+  // 변동(delta)은 "전주 대비"로 계산한다.
+  // Fed Balance·TGA 는 주 1회(수요일 기준) 나오고 ON RRP 는 매일 나오므로,
+  // ON RRP 는 Fed Balance 날짜와 같은 날(없으면 그 직전 영업일)의 값을 골라 날짜를 맞춘다.
   let netLiquidity = { error: "계산 불가" };
-if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
-  netLiquidity = {
-    value: fedBalance.value - tga.value - onrrp.value * 1000,
-  };
-  if (
-    fedBalance.delta != null &&
-    tga.delta != null &&
-    onrrp.delta != null
-  ) {
-    netLiquidity.delta =
-      fedBalance.delta - tga.delta - onrrp.delta * 1000;
+  if (fedBalance.value != null && tga.value != null && onrrp.value != null) {
+    const rrpObs = onrrpHistory.obs || null; // 최신순
+    const rrpOnOrBefore = (date) => (rrpObs && date ? rrpObs.find((o) => o.date <= date) ?? null : null);
+
+    const rrpNow = rrpOnOrBefore(fedBalance.date);
+    const rrpPrev = rrpOnOrBefore(fedBalance.prevDate);
+
+    // 날짜를 맞춘 ON RRP 값을 못 구하면 가장 최근 ON RRP 값으로 계산 (이때는 변동을 표시하지 않음)
+    const rrpValue = rrpNow ? rrpNow.value : onrrp.value;
+    netLiquidity = {
+      value: fedBalance.value - tga.value - rrpValue * 1000,
+      date: fedBalance.date,
+      delta: null,
+      pct: null,
+    };
+
+    if (rrpNow && rrpPrev && fedBalance.prevValue != null && tga.prevValue != null) {
+      const prevValue = fedBalance.prevValue - tga.prevValue - rrpPrev.value * 1000;
+      netLiquidity.delta = netLiquidity.value - prevValue;
+      netLiquidity.pct = prevValue ? (netLiquidity.delta / Math.abs(prevValue)) * 100 : null;
+      netLiquidity.prevDate = fedBalance.prevDate;
+    }
   }
-}
 
   let sofrIorbSpread = { error: "계산 불가" };
   if (sofr.value != null && iorb.value != null) {
