@@ -353,7 +353,7 @@ export default function Page() {
             />
             <Row
               label="Net Liquidity"
-              date={data.macro.netLiquidity.date}
+              date="Fed − TGA − RRP×1,000"
               field={{
                 value: data.macro.netLiquidity.value,
                 delta: data.macro.netLiquidity.delta ?? null,
