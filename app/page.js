@@ -361,11 +361,6 @@ export default function Page() {
               }}
               digits={0}
               deltaDigits={0}
-              deltaSuffix={
-                data.macro.netLiquidity.pct != null
-                  ? ` (${data.macro.netLiquidity.pct > 0 ? "+" : ""}${data.macro.netLiquidity.pct.toFixed(2)}%)`
-                  : ""
-              }
             />
             <Row label="SOFR" date={data.macro.sofr.date} field={data.macro.sofr} unit="%" />
             <Row label="IORB" date={data.macro.iorb.date} field={data.macro.iorb} unit="%" />
