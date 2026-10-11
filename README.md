@@ -14,8 +14,10 @@
 | ISM 제조업 PMI | 무료 공개 API가 없어 **제외**했습니다 | 필요하면 직접 값을 입력하는 칸을 추가할 수 있어요 |
 | USD/JPY 변동성 | Yahoo Finance 과거 종가로 20일 실현변동성을 직접 계산 | 원본 데이터의 "옵션 내재변동성"과는 다를 수 있음 |
 
-ICI가 공식적으로 공개하는 MMF 주간 총액 API는 없어서, 동일한 개념의 FRED 주간
-시리즈(WRMFSL + WIMFSL)로 대체했습니다.
+MMF 총액은 ICI 주간 발표(https://www.ici.org/research/stats/mmf)의 Total 값을 씁니다.
+ICI가 Vercel·GitHub 서버의 접속을 막기 때문에, 매주 Claude 예약 작업이 값을 읽어
+`data/mmf.json`에 저장하고 대시보드는 그 파일을 읽습니다. 파일을 못 읽으면
+FRED 분기 시리즈(MMMFFAQ027S)로 대신합니다.
 
 ## 로컬 실행
 

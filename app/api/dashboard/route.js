@@ -183,8 +183,8 @@ async function fredMmfTotal() {
 }
 
 // ---------- ICI 머니마켓펀드 총자산 (주간) ----------
-// ICI 는 Vercel 서버의 요청을 막기 때문에(HTTP 403) 여기서 직접 읽지 않는다.
-// GitHub Actions(.github/workflows/update-mmf.yml)가 매주 ICI 페이지를 읽어
+// ICI 는 Vercel·GitHub 서버의 요청을 막기 때문에(HTTP 403) 여기서 직접 읽지 않는다.
+// 매주 Claude 예약 작업이 ICI 페이지를 읽어 scripts/set-mmf.mjs 로
 // 저장소의 data/mmf.json 에 저장해 두고, 여기서는 그 파일만 읽는다.
 const MMF_JSON_URL =
   "https://raw.githubusercontent.com/vkvk768102-dev/market-dashboard-v2/main/data/mmf.json";
