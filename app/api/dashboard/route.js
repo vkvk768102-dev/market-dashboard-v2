@@ -168,7 +168,7 @@ async function fearGreed() {
     return { error: `Fear&Greed fetch 실패: ${e.message}` };
   }
 }
-// ---------- FRED 머니마켓펀드 총자산 (분기별, 계속 갱신됨) ----------
+// ---------- FRED 머니마켓펀드 총자산 (분기별, ICI 값을 못 읽을 때의 예비용) ----------
 // 예전에 쓰던 WRMFSL+WIMFSL(주간)은 2021년 2월에 발행이 중단되어 더 이상 갱신되지 않으므로,
 // 지금도 계속 갱신되는 분기별 시리즈(MMMFFAQ027S, 백만 달러 단위)로 대체.
 async function fredMmfTotal() {
@@ -178,7 +178,43 @@ async function fredMmfTotal() {
     value: result.value / 1000, // 백만 달러 -> 십억 달러
     date: result.date,
     delta: result.delta != null ? result.delta / 1000 : null,
+    source: "FRED",
   };
+}
+
+// ---------- ICI 머니마켓펀드 총자산 (주간) ----------
+// ICI 는 Vercel 서버의 요청을 막기 때문에(HTTP 403) 여기서 직접 읽지 않는다.
+// GitHub Actions(.github/workflows/update-mmf.yml)가 매주 ICI 페이지를 읽어
+// 저장소의 data/mmf.json 에 저장해 두고, 여기서는 그 파일만 읽는다.
+const MMF_JSON_URL =
+  "https://raw.githubusercontent.com/vkvk768102-dev/market-dashboard-v2/main/data/mmf.json";
+
+async function iciMmfTotal() {
+  try {
+    const res = await fetch(MMF_JSON_URL, { cache: "no-store" });
+    if (!res.ok) return { error: `ICI MMF 파일 HTTP ${res.status}` };
+    const data = await res.json();
+    if (typeof data.value !== "number" || !data.date) {
+      return { error: "ICI MMF 파일 형식 오류" };
+    }
+    return {
+      value: data.value, // 십억 달러
+      date: data.date,
+      delta: typeof data.delta === "number" ? data.delta : null,
+      source: "ICI",
+    };
+  } catch (e) {
+    return { error: `ICI MMF 파일 fetch 실패: ${e.message}` };
+  }
+}
+
+// ICI 주간 값을 먼저 쓰고, 못 읽으면 기존 FRED 분기 값으로 대신한다.
+async function mmfTotalAuto() {
+  const ici = await iciMmfTotal();
+  if (!ici.error) return ici;
+  const fred = await fredMmfTotal();
+  if (!fred.error) return fred;
+  return { error: `${ici.error} / ${fred.error}` };
 }
 
 export async function GET() {
@@ -240,7 +276,7 @@ export async function GET() {
     fredSeries("WRESBAL"),
     fredSeries("SOFR"),
     fredSeries("IORB"),
-    fredMmfTotal(),
+    mmfTotalAuto(),
     fredSeries("DGS1MO"),
     fredSeries("DGS3MO"),
     fearGreed(),
@@ -274,10 +310,15 @@ export async function GET() {
     sofrIorbSpread = { value: (sofr.value - iorb.value) * 100 }; // bps
   }
 
- // MMF 총액: 분기별로 계속 갱신되는 FRED 시리즈(MMMFFAQ027S) 사용
- const mmfTotal = mmfTotalRaw.error
-  ? { error: mmfTotalRaw.error }
-  : { value: mmfTotalRaw.value, date: mmfTotalRaw.date, delta: mmfTotalRaw.delta };
+  // MMF 총액: ICI 주간 값 우선, 실패 시 FRED 분기 시리즈(MMMFFAQ027S)
+  const mmfTotal = mmfTotalRaw.error
+    ? { error: mmfTotalRaw.error }
+    : {
+        value: mmfTotalRaw.value,
+        date: mmfTotalRaw.date,
+        delta: mmfTotalRaw.delta,
+        source: mmfTotalRaw.source,
+      };
 
   return Response.json({
     generatedAt: new Date().toISOString(),
