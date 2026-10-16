@@ -2,9 +2,9 @@
   "source": "ICI",
   "url": "https://www.ici.org/research/stats/mmf",
   "unit": "billions of USD",
-  "date": "2026-10-07",
-  "value": 7963.55,
-  "prevDate": "2026-09-30",
-  "prevValue": 7891.27,
-  "delta": 72.27
+  "date": "2026-10-14",
+  "value": 7923.08,
+  "prevDate": "2026-10-07",
+  "prevValue": 7963.55,
+  "delta": -40.47
 }
